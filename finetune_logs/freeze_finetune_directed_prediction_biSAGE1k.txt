@@ -1,0 +1,4 @@
+Num Threads    Batch Size     Epochs         Patience       Undirected     Bidirectional  GNN            # Layers       seed           F1 Val         ROC Val        F1 Test        ROC Test       ts            
+2              2              1000           20             0              1              SAGE           2              17             0.755          0.754          0.707          0.625          Oct31-07:30:46
+2              2              1000           20             0              1              SAGE           2              27             0.763          0.690          0.740          0.779          Oct31-07:30:46
+2              2              1000           20             0              1              SAGE           2              23             0.750          0.755          0.766          0.794          Oct31-07:30:46

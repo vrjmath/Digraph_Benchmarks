@@ -118,26 +118,28 @@ class GCNEncoder(nn.Module):
         return x
     
 class FinalLayer(nn.Module):
-    def __init__(self):
+    def __init__(self, in_channels, out_channels):
         super(FinalLayer, self).__init__()
-        
-        self.lin = Linear(5, 1)
+        self.lin = Linear(in_channels, out_channels)
 
     def forward(self, x, batch):
-        x = F.log_softmax(x, dim=1)
         x = global_mean_pool(x, batch)
         x = self.lin(x)
         return x
     
 class MLPClassifier(torch.nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, in_channels, hidden_channels, out_channels):
         super(MLPClassifier, self).__init__()
-        self.fc1 = torch.nn.Linear(input_dim, 64)
-        self.fc2 = torch.nn.Linear(64, output_dim)
+        self.mlp = torch.nn.Sequential(
+            torch.nn.Linear(in_channels, hidden_channels),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_channels, hidden_channels))
+        self.lin = nn.Linear(hidden_channels, out_channels)
 
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
+    def forward(self, x, edge_index, batch):
+        x = self.mlp(x)
+        x = global_mean_pool(x, batch)
+        x = self.lin(x)
         return x
 
 class GCNDecoder(nn.Module):
@@ -149,85 +151,182 @@ class GCNDecoder(nn.Module):
         # Reconstruct the adjacency matrix (simplified inner product decoder)
         adj_pred = torch.sigmoid(torch.matmul(z, z.t()))
         return adj_pred
-    
-class MLPDecoder(nn.Module):
-    def __init__(self, in_channels, hidden_channels=32):
-        super(MLPDecoder, self).__init__()
+     
+class EdgeTypeDecoder(nn.Module):
+    def __init__(self, in_channels, hidden_channels):
+        super(EdgeTypeDecoder, self).__init__()
         self.fc1 = nn.Linear(2 * in_channels, hidden_channels)
         self.fc2 = nn.Linear(hidden_channels, 1)
+        self.bilinear = nn.Bilinear(in_channels, in_channels, 1)  # Bilinear layer
     
     def forward(self, z, edge_index):
-        # edge_index has shape [2, E], where E is the number of edges to predict
         src, dst = edge_index
-        # Gather the embeddings for source and target nodes
-        z_src = z[src]  # Shape: [E, in_channels]
-        z_dst = z[dst]  # Shape: [E, in_channels]
-        # Concatenate embeddings
-        z_pair = torch.cat([z_src, z_dst], dim=1)  # Shape: [E, 2 * in_channels]
-        # Pass through MLP
-        hidden = F.relu(self.fc1(z_pair))  # Shape: [E, hidden_channels]
-        out = torch.sigmoid(self.fc2(hidden)).squeeze()  # Shape: [E]
+        z_src = z[src]
+        z_dst = z[dst]
+        out = self.bilinear(z_src, z_dst)
+        out = torch.sigmoid(out).squeeze()
         return out
     
 class GCN_Autoencoder(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout):
+    def __init__(self, gnn_model, in_channels, hidden_channels, out_channels, num_layers):
         super(GCN_Autoencoder, self).__init__()
-        #self.encoder = GCNEncoder(nfeat, nhid, nclass, dropout)
-        #self.encoder = DirectedGINLayer(nfeat, nclass)
-        self.encoder = BidirectionalSAGEConv(nfeat, nhid, nclass)
-        #self.decoder = GCNDecoder(nclass)
-        self.decoder = MLPDecoder(5)
+        self.encoder = gnn_model
+        self.decoder = EdgeTypeDecoder(hidden_channels, hidden_channels)
 
-    def forward(self, x, adj, batch, edge_index):
-        # Encoder: Get node embeddings
-        z = self.encoder(x, adj, batch)
-        # Decoder: Reconstruct adjacency matrix
-        #adj_pred = self.decoder(z)
+    def forward(self, x, edge_index, batch):
+        z = self.encoder(x, edge_index, batch)
         adj_pred = self.decoder(z, edge_index)
         return adj_pred
+
+class Graph_Prediction(nn.Module):
+    def __init__(self, gnn_model, in_channels, hidden_channels, out_channels, num_layers):
+        super(Graph_Prediction, self).__init__()
+        self.encoder = gnn_model
+        self.decoder = FinalLayer(hidden_channels, out_channels)
+    
+    def forward(self, x, edge_index, batch):
+        z = self.encoder(x, edge_index, batch)
+        graph_pred = self.decoder(z, batch)
+        return graph_pred
+
 
 
 class BidirectionalGINConv(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels):
-        super(BidirectionalGINConv, self).__init__()
+        super().__init__()
+
         mlp = torch.nn.Sequential(
             torch.nn.Linear(in_channels, hidden_channels),
             torch.nn.ReLU(),
             torch.nn.Linear(hidden_channels, out_channels))
-        self.gin_forward = GINConv(mlp)
-        self.gin_backward = GINConv(mlp)
-        self.lin = Linear(out_channels, 1)
+        self.conv_forward = GINConv(mlp)
+        self.conv_backward = GINConv(mlp)
 
-    def forward(self, x, edge_index, batch):
-        x_forward = self.gin_forward(x, edge_index)
-        reverse_edge_index = edge_index[[1, 0], :]
-        x_backward = self.gin_backward(x, reverse_edge_index)
-        x_bidirectional = (x_forward + x_backward) / 2.0
-        x = F.log_softmax(x_bidirectional, dim=1)
-        x = global_mean_pool(x, batch)
-        x = self.lin(x)
+    def forward(self, x, edge_index, reverse_edge_index):
+        x_forward = self.conv_forward(x, edge_index)
+        x_backward = self.conv_backward(x, reverse_edge_index)
+        x = (x_forward + x_backward)/2
+        x = F.relu(x)
         return x
     
-class BidirectionalSAGEConv(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels):
-        super(BidirectionalSAGEConv, self).__init__()
-
-        self.sage_forward = SAGEConv(in_channels, hidden_channels)
-        self.sage_forward_hidden = SAGEConv(hidden_channels, out_channels)
-        self.sage_backward = SAGEConv(in_channels, hidden_channels)
-        self.sage_backward_hidden = SAGEConv(hidden_channels, out_channels)
-        self.lin = Linear(out_channels, 1)
-
-    def forward(self, x, edge_index, batch):
-        x_forward = self.sage_forward(x, edge_index)
-        x_forward = self.sage_forward_hidden(x_forward, edge_index)
-        reverse_edge_index = edge_index[[1, 0], :]
-        x_backward = self.sage_backward(x, reverse_edge_index)
-        x_backward = self.sage_backward_hidden(x_backward, reverse_edge_index)
-        x_bidirectional = (x_forward + x_backward) / 2.0
+class BidirectionalGIN(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers):
+        super(BidirectionalGIN, self).__init__()
         
-        x = F.log_softmax(x_bidirectional, dim=1)
-        x = global_mean_pool(x, batch)
-        x = self.lin(x)
+        self.convs = nn.ModuleList()
+        assert num_layers >= 1
+        self.convs.append(BidirectionalGINConv(in_channels, hidden_channels, hidden_channels))
+        for _ in range(num_layers - 1):
+            self.convs.append(BidirectionalGINConv(hidden_channels, hidden_channels, hidden_channels))
+        #self.lin = nn.Linear(hidden_channels, out_channels)
+    def forward(self, x, edge_index, batch):
+        reverse_edge_index = edge_index[[1, 0], :]
+        for conv in self.convs:
+            x = conv(x, edge_index, reverse_edge_index)
+
+        #x = global_mean_pool(x, batch)
+        #x = self.lin(x)
+
+        return x
+
+class DirectionalGINConv(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super().__init__()
+
+        mlp = torch.nn.Sequential(
+            torch.nn.Linear(in_channels, out_channels),
+            torch.nn.ReLU(),
+            torch.nn.Dropout())
+        """
+        mlp = torch.nn.Sequential(
+            torch.nn.Linear(in_channels, hidden_channels),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_channels, out_channels))"""
+        self.conv_forward = GINConv(mlp)
+
+    def forward(self, x, edge_index):
+        x = self.conv_forward(x, edge_index)
+        x = F.relu(x)
+        return x
+    
+class DirectionalGIN(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers):
+        super(DirectionalGIN, self).__init__()
+        
+        self.convs = nn.ModuleList()
+        assert num_layers >= 1
+        self.convs.append(DirectionalGINConv(in_channels, hidden_channels, hidden_channels))
+        for _ in range(num_layers - 1):
+            self.convs.append(DirectionalGINConv(hidden_channels, hidden_channels, hidden_channels))
+        #self.lin = nn.Linear(hidden_channels, out_channels)
+    def forward(self, x, edge_index, batch):
+        for conv in self.convs:
+            x = conv(x, edge_index)
+
+        #x = global_mean_pool(x, batch)
+        #x = self.lin(x)
+
+        return x
+    
+class BidirectionalSAGEConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+
+        self.conv_forward = SAGEConv(in_channels, out_channels)
+        self.conv_backward = SAGEConv(in_channels, out_channels)
+
+    def forward(self, x, edge_index, reverse_edge_index):
+        x_forward = self.conv_forward(x, edge_index)
+        x_backward = self.conv_backward(x, reverse_edge_index)
+        x = (x_forward + x_backward)/2
+        x = F.relu(x)
+        return x
+    
+class BidirectionalSAGE(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers):
+        super(BidirectionalSAGE, self).__init__()
+        
+        self.convs = nn.ModuleList()
+        assert num_layers >= 1
+        self.convs.append(BidirectionalSAGEConv(in_channels, hidden_channels))
+        for _ in range(num_layers - 1):
+            self.convs.append(BidirectionalSAGEConv(hidden_channels, hidden_channels))
+        #self.lin = nn.Linear(hidden_channels, out_channels)
+    def forward(self, x, edge_index, batch):
+        reverse_edge_index = edge_index[[1, 0], :]
+        for conv in self.convs:
+            x = conv(x, edge_index, reverse_edge_index)
+            
+        #x = global_mean_pool(x, batch)
+        #x = self.lin(x)
+        return x
+    
+class DirectionalSAGEConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+
+        self.conv_forward = SAGEConv(in_channels, out_channels)
+
+    def forward(self, x, edge_index):
+        x = self.conv_forward(x, edge_index)
+        x = F.relu(x)
+        return x
+    
+class DirectionalSAGE(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers):
+        super(DirectionalSAGE, self).__init__()
+        
+        self.convs = nn.ModuleList()
+        assert num_layers >= 1
+        self.convs.append(DirectionalSAGEConv(in_channels, hidden_channels))
+        for _ in range(num_layers - 1):
+            self.convs.append(DirectionalSAGEConv(hidden_channels, hidden_channels))
+        #self.lin = nn.Linear(hidden_channels, out_channels)
+    def forward(self, x, edge_index, batch):
+        for conv in self.convs:
+            x = conv(x, edge_index)
+            
+        #x = global_mean_pool(x, batch)
+        #x = self.lin(x)
         return x
     

@@ -5,6 +5,7 @@ import torch
 import csv
 from torch import nn
 from tqdm import tqdm
+from deepdataflow import DeepDataFlow 
 
 def obtain_embeddings(vocab, G):
     arr = []
@@ -18,10 +19,11 @@ def obtain_embeddings(vocab, G):
 
 def load_pickle(vocab):
     data_list = []
+    labels = []
     files = [file for file in glob.glob("program_graphs/*")]
     i = 0
     for file_name in tqdm(files):
-        #if i > 10:
+        #if i > 100:
             #break
         i = i + 1
         G = pickle.load(open(file_name, 'rb'))
@@ -31,11 +33,14 @@ def load_pickle(vocab):
         try: 
             torch_data = torch_geometric.utils.from_networkx(G)
             torch_data.features["embedding"] = obtain_embeddings(vocab, G)
-            data_list.append(torch_data)
+            torch_deepdataflow = DeepDataFlow(edge_index=torch_data.edge_index, type=torch_data.type, flow=torch_data.flow, 
+                         position = torch_data.position, embedding = obtain_embeddings(vocab, G), 
+                         label = torch_data.features["devmap_label"], num_nodes = torch_data.num_nodes)
+            data_list.append(torch_deepdataflow)
+            labels.append(torch_data.features["devmap_label"])
         except ValueError:
             print("This graph contains different node attributes")
-            
-    return data_list
+    return data_list, labels
 
 def read_vocabulary(vocab_csv):
     target_cumfreq = 1.0
