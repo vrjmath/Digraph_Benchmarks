@@ -1,4 +1,4 @@
-# 📘 README
+# README
 
 ## Overview
 
@@ -25,7 +25,7 @@ python train.py --wandb
 | Argument             | Type | Default         | Description                                             |
 | -------------------- | ---- | --------------- | ------------------------------------------------------- |
 | `--num_threads`      | int  | `2`             | Number of CPU threads to use.                           |
-| `--batch_size`       | int  | `2`             | size.                                        |
+| `--batch_size`       | int  | `2`             |                                         |
 | `--epochs`           | int  | `10`            |                                |
 | `--patience`         | int  | `10`            | Early stopping patience.                                |
 | `--undirected`       | flag | `False`         | If true, treat graphs as undirected (add reverse edges). |
