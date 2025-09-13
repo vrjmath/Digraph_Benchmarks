@@ -60,14 +60,14 @@ python train.py --wandb
 | Argument             | Type | Default         | Description                                             |
 | -------------------- | ---- | --------------- | ------------------------------------------------------- |
 | `--num_threads`      | int  | `2`             | Number of CPU threads to use.                           |
-| `--batch_size`       | int  | `2`             | Mini-batch size.                                        |
-| `--epochs`           | int  | `10`            | Maximum number of epochs.                               |
+| `--batch_size`       | int  | `2`             | size.                                        |
+| `--epochs`           | int  | `10`            |                                |
 | `--patience`         | int  | `10`            | Early stopping patience.                                |
-| `--undirected`       | flag | `False`         | If set, treat graphs as undirected (add reverse edges). |
-| `--bidirectional`    | flag | `False`         | If set, use bidirectional GNN variant.                  |
+| `--undirected`       | flag | `False`         | If true, treat graphs as undirected (add reverse edges). |
+| `--bidirectional`    | flag | `False`         | If true, use bidirectional GNN variant.                  |
 | `--wandb`            | flag | `False`         | Enable logging to Weights & Biases.                     |
-| `--fine_tuning`      | flag | `False`         | Fine-tune a pretrained autoencoder.                     |
-| `--GNN`              | str  | `"SAGE"`        | GNN backbone: `SAGE` or `GIN`.                          |
+| `--fine_tuning`      | flag | `False`         | Use a pretrained autoencoder.                     |
+| `--GNN`              | str  | `"SAGE"`        | GNN options: `SAGE` or `GIN`.                          |
 | `--num_layers`       | int  | `1`             | Number of GNN layers.                                   |
 | `--log_file_name`    | str  | `"default.txt"` | File to log results.                                    |
 | `--pretrained_model` | str  | `"default.txt"` | Path to pretrained model (if fine-tuning).              |
