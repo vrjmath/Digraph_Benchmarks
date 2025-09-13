@@ -2,8 +2,8 @@
 
 ## Overview
 
-This project benchmarks **graph neural networks (GNNs)** on a downstream classification task.
-It supports training from scratch or fine-tuning from a pretrained **GCN Autoencoder**, with options for different GNN backbones (GraphSAGE, GIN), directional vs. bidirectional message passing, and undirected graph treatment.
+This project benchmarks **graph neural networks (GNNs)** on the OpenCL DevMap dataset.
+It supports multiple GNNs, bidirectional message passing, and directed/undirected graphs. 
 
 Key features:
 
@@ -12,31 +12,6 @@ Key features:
 * Support for **fine-tuning** pretrained autoencoders
 * Logging to **Weights & Biases (wandb)**
 * Evaluation with **F1-score** and **ROC-AUC**
-
----
-
-## 📦 Installation
-
-Clone the repository and install dependencies:
-
-```bash
-git clone <your-repo-url>
-cd <your-repo-name>
-pip install -r requirements.txt
-```
-
-Make sure you have PyTorch Geometric installed. Follow the official [PyG installation guide](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html) for your system.
-
----
-
-## 📂 Data
-
-The training script expects:
-
-* `data/data_list.pkl` → list of graphs (`torch_geometric.data.Data` objects with `.embedding`, `.edge_index`, `.label`)
-* `data/labels.pkl` → corresponding graph labels
-
-To customize dataset loading, modify `main()` where these files are read.
 
 ---
 
@@ -112,23 +87,3 @@ Num Threads | Batch Size | Epochs | Patience | Undirected | Bidirectional | GNN 
 * If `--wandb` is enabled, results are also logged to your wandb dashboard.
 
 ---
-
-## 🔧 Project Structure
-
-```
-.
-├── data/
-│   ├── data_list.pkl
-│   ├── labels.pkl
-├── models.py
-├── util.py
-├── train.py
-├── requirements.txt
-└── README.md
-```
-
----
-
-## 📝 Citation
-
-If you use this code, please cite this repository.
