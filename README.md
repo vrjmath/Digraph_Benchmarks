@@ -15,7 +15,7 @@ Key features:
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ```bash
 python train.py --wandb
@@ -40,7 +40,7 @@ python train.py --wandb
 
 ---
 
-## 📊 Output
+## Output
 
 * Prints **F1 score** and **ROC-AUC** for train, validation, and test sets per fold.
 * Logs results in the specified `--log_file_name` with columns:
