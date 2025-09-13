@@ -79,11 +79,6 @@ python train.py --wandb
 
 * Prints **F1 score** and **ROC-AUC** for train, validation, and test sets per fold.
 * Logs results in the specified `--log_file_name` with columns:
-
-```
-Num Threads | Batch Size | Epochs | Patience | Undirected | Bidirectional | GNN | # Layers | Seed | F1 Val | ROC Val | F1 Test | ROC Test | Timestamp
-```
-
 * If `--wandb` is enabled, results are also logged to your wandb dashboard.
 
 ---
