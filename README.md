@@ -17,45 +17,10 @@ Key features:
 
 ## 🚀 Usage
 
-### Training from scratch
-
-```bash
-python train.py \
-  --num_threads 4 \
-  --batch_size 32 \
-  --epochs 100 \
-  --patience 10 \
-  --GNN SAGE \
-  --num_layers 2 \
-  --log_file_name results.txt \
-  --seed 42
-```
-
-### Fine-tuning from a pretrained autoencoder
-
-```bash
-python train.py \
-  --num_threads 4 \
-  --batch_size 32 \
-  --epochs 50 \
-  --patience 5 \
-  --GNN GIN \
-  --bidirectional \
-  --fine_tuning \
-  --pretrained_model pretrained/autoencoder.pth \
-  --log_file_name finetune_results.txt \
-  --seed 123
-```
-
-### With Weights & Biases logging
-
 ```bash
 python train.py --wandb
 ```
 
----
-
-## ⚙️ Arguments
 
 | Argument             | Type | Default         | Description                                             |
 | -------------------- | ---- | --------------- | ------------------------------------------------------- |
