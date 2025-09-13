@@ -18,9 +18,9 @@ Key features:
 ## Usage
 
 ```bash
-python train.py --wandb
+python train.py 
 ```
-
+Refer to the arguments below when executing train.py
 
 | Argument             | Type | Default         | Description                                             |
 | -------------------- | ---- | --------------- | ------------------------------------------------------- |
